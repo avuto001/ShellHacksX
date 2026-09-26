@@ -1,38 +1,48 @@
-from datetime import datetime
-
 import streamlit as st
 
-from services.stock_data import StockDataError, get_company_name, get_news, get_quote
+from services.stock_data import StockDataError, get_company_name, get_quote
+from utils.state import add_stock, get_portfolio, remove_stock
+from utils.ui import page_header, stock_card
 
-st.set_page_config(page_title="StockSense", page_icon="📈")
+page_header("My Stocks", "StockSense – Make sense of your stocks.")
 
-st.title("StockSense")
-st.subheader("StockSense – Make sense of your stocks.")
+# --- Add a stock ---
+with st.form("add_stock", clear_on_submit=True):
+    col1, col2, col3 = st.columns([2, 1, 1], vertical_alignment="bottom")
+    ticker = col1.text_input("Ticker symbol", placeholder="e.g. AAPL")
+    shares = col2.number_input("Shares", min_value=0.0, value=1.0, step=1.0)
+    submitted = col3.form_submit_button("Add", width="stretch")
 
-st.divider()
-
-# --- Quick test section ---
-st.header("Quick test")
-ticker = st.text_input("Enter a ticker symbol", placeholder="e.g. AAPL").strip().upper()
-
-if ticker:
+if submitted and ticker.strip():
+    ticker = ticker.strip().upper()
     try:
-        with st.spinner(f"Looking up {ticker}..."):
-            quote = get_quote(ticker)
-            name = get_company_name(ticker)
-            news = get_news(ticker)
+        get_quote(ticker)  # make sure the ticker is real before adding it
     except StockDataError as e:
         st.error(str(e))
     else:
-        st.metric(
-            label=name or ticker,
-            value=f"${quote['price']:,.2f}",
-            delta=f"{quote['change']:+.2f} ({quote['percent_change']:+.2f}%)",
-        )
+        add_stock(ticker, shares)
+        st.success(f"Added {ticker}.")
 
-        st.subheader("Headlines from the past week")
-        if not news:
-            st.info("No news found for this ticker in the past week.")
-        for article in news:
-            when = datetime.fromtimestamp(article["datetime"]).strftime("%b %d")
-            st.markdown(f"- [{article['headline']}]({article['url']}) — {article['source']}, {when}")
+# --- Show the portfolio ---
+portfolio = get_portfolio()
+if not portfolio:
+    st.info("Your portfolio is empty. Add a ticker above to get started.")
+
+for holding in portfolio:
+    ticker = holding["ticker"]
+    try:
+        quote = get_quote(ticker)
+        name = get_company_name(ticker)
+    except StockDataError as e:
+        st.error(f"{ticker}: {e}")
+        continue
+
+    col1, col2 = st.columns([5, 1], vertical_alignment="center")
+    with col1:
+        stock_card(ticker, name, quote, holding["shares"])
+    if col2.button("Remove", key=f"remove_{ticker}"):
+        remove_stock(ticker)
+        st.rerun()
+
+if portfolio:
+    st.caption("Open **Stock Detail** in the sidebar to see news for each stock.")
