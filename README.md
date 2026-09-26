@@ -172,3 +172,5 @@ Open `.streamlit/secrets.toml` and check that the keys are pasted correctly, ins
 The app is already running in another terminal. Find that terminal and press Ctrl+C, or just use the tab that's already open in your browser.
 
 **Still stuck?** Ask Claude Code in VS Code. Paste the error message and ask what's wrong.
+
+testing
