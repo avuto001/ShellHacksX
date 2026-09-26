@@ -1,0 +1,10 @@
+# Python virtual environment
+.venv/
+
+# Secrets (API keys) - never commit these
+.streamlit/secrets.toml
+
+# Python cache
+__pycache__/
+*.pyc
+.DS_Store
