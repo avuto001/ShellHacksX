@@ -3,11 +3,11 @@ import streamlit as st
 from services.ai_summary import summarize_portfolio_day
 from utils.portfolio import load_portfolio_data
 from utils.state import get_tickers
-from utils.ui import beginner_tip, change_color, link_citations, page_header
+from utils.ui import apply_styles, change_color, link_citations, page_header
 from utils.ui import html_text as escape
 
 page_header("Daily Summary", "Here's what happened to your stocks today.")
-beginner_tip()
+apply_styles()
 
 # Colors come from .streamlit/config.toml, so this page follows the app's theme.
 PRIMARY = st.get_option("theme.primaryColor") or "#3b82f6"

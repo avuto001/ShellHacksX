@@ -2,10 +2,11 @@ import streamlit as st
 import pydeck as pdk
 import pandas as pd
 from services.private_markets import get_private_equity_data
-from utils.ui import page_header
+from utils.ui import apply_styles, page_header
 
 # Header
 page_header("Goal Benchmarking", "Private Equity Firms & Financial Benchmarks")
+apply_styles()
 
 # Load data
 df = get_private_equity_data()

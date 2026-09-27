@@ -10,11 +10,11 @@ from services.stock_data import StockDataError, get_company_name, get_news, get_
 from utils.portfolio import get_industry
 from utils.price_history import PERIODS, get_price_history
 from utils.state import get_tickers
-from utils.ui import GREEN, RED, beginner_tip, change_color, link_citations, page_header
+from utils.ui import GREEN, RED, apply_styles, change_color, link_citations, page_header
 from utils.ui import html_text as escape
 
 page_header("Stock Detail", "Price, news and an AI summary for one stock.")
-beginner_tip()
+apply_styles()
 
 SENTIMENTS = {
     "positive": ("🟢", "News looks positive", GREEN),
