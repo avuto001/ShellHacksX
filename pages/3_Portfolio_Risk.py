@@ -166,7 +166,7 @@ with left:
         ))
         style_chart(donut)
         donut.update_layout(legend={"orientation": "v", "yanchor": "middle", "y": 0.5})
-        st.plotly_chart(donut, width="stretch", config=NO_TOOLBAR, theme=None)
+        st.plotly_chart(donut, use_container_width=True, config=NO_TOOLBAR, theme=None)
 
 with right:
     with card("volatility"):
@@ -199,7 +199,7 @@ with right:
         ))
         style_chart(bars)
         bars.update_yaxes(tickformat=".0%")
-        st.plotly_chart(bars, width="stretch", config=NO_TOOLBAR, theme=None)
+        st.plotly_chart(bars, use_container_width=True, config=NO_TOOLBAR, theme=None)
 
 st.write("")
 
