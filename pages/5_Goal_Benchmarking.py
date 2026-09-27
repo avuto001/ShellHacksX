@@ -83,7 +83,7 @@ else:
 st.divider()
 
 # --- 2. Interactive Map (Below Table) ---
-st.markdown("#### 🗺️ Continental US Firm Locations")
+st.markdown("#### Continental US Firm Locations")
 print(filtered_df)
 
 filtered_df['Result'] = filtered_df.apply(
