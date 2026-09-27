@@ -1,6 +1,7 @@
-import altair as alt
+# This file is the Portfolio Risk page
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from services.price_history import get_history_for_many
@@ -8,42 +9,37 @@ from services.risk import MARKET, TRADING_DAYS_PER_YEAR, analyze_portfolio, dail
 from services.stock_data import StockDataError, get_quote
 from utils.portfolio import get_industry
 from utils.state import get_portfolio
-from utils.ui import GREEN, RED, beginner_tip, page_header
+from utils.ui import BLUE, GRAY, GREEN, ORANGE, RED, apply_styles, card, metric_card, page_header
 from utils.ui import html_text as escape
 
 page_header("Portfolio Risk Health", "Understand volatility and safety metrics simplified for beginners")
-beginner_tip()
+apply_styles()
 
-BLUE = "#3b82f6"
-DONUT_COLORS = [BLUE, "#10b981", "#f59e0b", "#8b5cf6", "#6b7280"]  # the last one is "Others"
+DONUT_COLORS = [BLUE, GREEN, ORANGE]  # top 3 stocks; "Others" is gray
 DAYS_30 = 21  # about 30 calendar days of trading
-
-# Colors come from .streamlit/config.toml, so this page follows the app's theme.
-PRIMARY = st.get_option("theme.primaryColor") or BLUE
-CARD = st.get_option("theme.secondaryBackgroundColor") or "#f0f2f6"
-
-st.markdown(
-    f"""
-    <style>
-    .ss-kpi {{border: 1px solid {PRIMARY}33; border-radius: 12px; padding: 14px 16px;
-             background: {CARD}66; height: 100%;}}
-    .ss-kpi-label {{opacity: .7; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;}}
-    .ss-kpi-value {{font-size: 1.7rem; font-weight: 700; margin: 2px 0;}}
-    .ss-muted {{opacity: .7; font-size: .8rem;}}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+CHART_TEXT = "#9CA3AF"  # light gray
+NO_TOOLBAR = {"displayModeBar": False}
 
 
-def kpi(column, label, value, note):
-    """Draw one of the four number cards at the top."""
-    column.markdown(
-        f'<div class="ss-kpi"><div class="ss-kpi-label">{escape(label)}</div>'
-        f'<div class="ss-kpi-value">{escape(value)}</div>'
-        f'<div class="ss-muted">{escape(note)}</div></div>',
-        unsafe_allow_html=True,
+def style_chart(figure):
+    """Dark-friendly chart look: see-through background, no gridlines, light gray text."""
+    figure.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": CHART_TEXT},
+        margin={"t": 10, "b": 10, "l": 10, "r": 10},
+        height=260,
     )
+    figure.update_xaxes(showgrid=False, zeroline=False)
+    figure.update_yaxes(showgrid=False, zeroline=False)
+    return figure
+
+
+def format_or_dash(value, pattern):
+    """Format a number, or show "–" if we don't have it."""
+    if value is None or pd.isna(value):
+        return "–"
+    return pattern.format(value)
 
 
 def beta_note(beta):
@@ -117,101 +113,140 @@ if MARKET in returns.columns and returns[MARKET].var() > 0:
 beta = risk["beta"]
 drawdown = risk["max_drawdown"]
 cols = st.columns(4)
-kpi(cols[0], "Portfolio beta", f"{beta:.2f}" if beta is not None else "–", beta_note(beta))
-kpi(cols[1], "Volatility (30D)", f"{volatility_30d:.1%}" if volatility_30d is not None else "–",
-    volatility_note(volatility_30d))
-kpi(cols[2], "Max drawdown", f"{drawdown:.1%}" if drawdown is not None else "–", "Worst drop from recent high point")
-kpi(cols[3], "Sharpe ratio", f"{sharpe:.2f}" if sharpe is not None else "–", sharpe_note(sharpe))
+with cols[0]:
+    metric_card("Portfolio beta", format_or_dash(beta, "{:.2f}"), beta_note(beta))
+with cols[1]:
+    metric_card("Volatility (30D)", format_or_dash(volatility_30d, "{:.1%}"), volatility_note(volatility_30d))
+with cols[2]:
+    metric_card("Max drawdown", format_or_dash(drawdown, "{:.1%}"), "Worst drop from recent high point")
+with cols[3]:
+    metric_card("Sharpe ratio", format_or_dash(sharpe, "{:.2f}"), sharpe_note(sharpe))
 
 st.write("")
 
 # --- Charts: where the money is, and how much each stock swings ---
-left, right = st.columns([1, 1], gap="medium")
+left, right = st.columns(2, gap="medium")
 
-with left.container(border=True):
-    st.markdown("**Portfolio Concentration (Asset Weights)**")
-    ranked = sorted(weights.items(), key=lambda item: item[1], reverse=True)
-    slices = ranked[:4] if len(ranked) <= 4 else ranked[:3] + [("Others", sum(w for _, w in ranked[3:]))]
-    donut_data = pd.DataFrame(
-        {"Stock": [f"{t} ({w:.0%})" for t, w in slices], "Weight": [w for _, w in slices]}
-    )
-    names = list(donut_data["Stock"])
-    has_others = slices[-1][0] == "Others"
-    colors = DONUT_COLORS[:3] + [DONUT_COLORS[-1]] if has_others else DONUT_COLORS[: len(names)]
-    donut = (
-        alt.Chart(donut_data)
-        .mark_arc(innerRadius=55, outerRadius=85)
-        .encode(
-            theta="Weight:Q",
-            color=alt.Color("Stock:N", sort=names, scale=alt.Scale(domain=names, range=colors),
-                            legend=alt.Legend(title=None, orient="right")),
-            tooltip=[alt.Tooltip("Stock:N"), alt.Tooltip("Weight:Q", format=".1%")],
-        )
-        .properties(height=200)
-    )
-    st.altair_chart(donut, width="stretch")
+with left:
+    with card("concentration"):
+        st.markdown('<div class="ss-card-title">Portfolio Concentration (Asset Weights)</div>', unsafe_allow_html=True)
 
-with right.container(border=True):
-    st.markdown("**Stock Volatility / Volatility Index**")
-    riskiest = max(stock_volatility, key=stock_volatility.get)
-    bar_data = pd.DataFrame(
-        {"Stock": list(stock_volatility), "Volatility": list(stock_volatility.values())}
-    ).sort_values("Volatility")
-    bars = (
-        alt.Chart(bar_data)
-        .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4, size=28)
-        .encode(
-            x=alt.X("Stock:N", sort=list(bar_data["Stock"]), title=None, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("Volatility:Q", title=None, axis=alt.Axis(format="%")),
-            color=alt.condition(alt.datum.Stock == riskiest, alt.value(RED), alt.value(BLUE)),
-            tooltip=[alt.Tooltip("Stock:N"), alt.Tooltip("Volatility:Q", title="Yearly swings", format=".1%")],
-        )
-        .properties(height=200)
-    )
-    st.altair_chart(bars, width="stretch")
-    if len(stock_volatility) > 1:
-        st.caption(f"Red = your biggest swinger ({riskiest}). Based on the past year of daily prices.")
+        # Sort stocks from biggest to smallest weight
+        ranked = []
+        for ticker in weights:
+            ranked.append((weights[ticker], ticker))
+        ranked.sort(reverse=True)
+
+        # Top 3 stocks get their own slice; the rest are added up as "Others"
+        labels = []
+        values = []
+        colors = []
+        others = 0.0
+        for position in range(len(ranked)):
+            weight, ticker = ranked[position]
+            if position < 3:
+                labels.append(f"{ticker} ({weight:.0%})")
+                values.append(weight)
+                colors.append(DONUT_COLORS[position])
+            else:
+                others = others + weight
+        if others > 0:
+            labels.append(f"Others ({others:.0%})")
+            values.append(others)
+            colors.append(GRAY)
+
+        donut = go.Figure(go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.6,
+            sort=False,
+            marker={"colors": colors, "line": {"width": 0}},
+            textinfo="none",
+            hovertemplate="%{label}<extra></extra>",
+        ))
+        style_chart(donut)
+        donut.update_layout(legend={"orientation": "v", "yanchor": "middle", "y": 0.5})
+        st.plotly_chart(donut, width="stretch", config=NO_TOOLBAR, theme=None)
+
+with right:
+    with card("volatility"):
+        st.markdown('<div class="ss-card-title">Stock Volatility</div>', unsafe_allow_html=True)
+
+        # Sort stocks from calmest to most volatile
+        by_volatility = []
+        for ticker in stock_volatility:
+            by_volatility.append((stock_volatility[ticker], ticker))
+        by_volatility.sort()
+
+        bar_names = []
+        bar_values = []
+        bar_colors = []
+        for position in range(len(by_volatility)):
+            volatility, ticker = by_volatility[position]
+            bar_names.append(ticker)
+            bar_values.append(volatility)
+            # The last bar is the highest one: make it red
+            if position == len(by_volatility) - 1 and len(by_volatility) > 1:
+                bar_colors.append(RED)
+            else:
+                bar_colors.append(BLUE)
+
+        bars = go.Figure(go.Bar(
+            x=bar_names,
+            y=bar_values,
+            marker={"color": bar_colors},
+            hovertemplate="%{x}: %{y:.1%} yearly swings<extra></extra>",
+        ))
+        style_chart(bars)
+        bars.update_yaxes(tickformat=".0%")
+        st.plotly_chart(bars, width="stretch", config=NO_TOOLBAR, theme=None)
+
+st.write("")
 
 # --- Holdings & Risk Matrix ---
-with st.container(border=True):
-    st.markdown("**Holdings & Risk Matrix**")
-    rows = []
-    for ticker, weight in sorted(weights.items(), key=lambda item: item[1], reverse=True):
-        try:
-            quote = get_quote(ticker)
-        except StockDataError:
-            quote = {"price": None, "percent_change": None}
-        rows.append({
-            "Ticker": ticker,
-            "Price": quote["price"],
-            "Daily Change": quote["percent_change"],
-            "Beta": stock_beta.get(ticker),
-            "Weight": weight * 100,
-        })
-    table = pd.DataFrame(rows)
+rows_html = ""
+for weight, ticker in ranked:
+    try:
+        quote = get_quote(ticker)
+    except StockDataError:
+        quote = {"price": None, "percent_change": None}
 
-    def color_change(value):
-        if pd.isna(value) or value == 0:
-            return ""
-        return f"color: {GREEN if value > 0 else RED}; font-weight: 600"
+    # Green for gains, red for losses
+    change = quote["percent_change"]
+    change_class = ""
+    if change is not None and change > 0:
+        change_class = "ss-pos"
+    elif change is not None and change < 0:
+        change_class = "ss-neg"
 
-    st.dataframe(
-        table.style.map(color_change, subset=["Daily Change"]),
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "Price": st.column_config.NumberColumn(format="$%.2f"),
-            "Daily Change": st.column_config.NumberColumn(format="%+.2f%%"),
-            "Beta": st.column_config.NumberColumn(format="%.2f"),
-            "Weight": st.column_config.NumberColumn(format="%.0f%%"),
-        },
+    rows_html += (
+        f"<tr><td><b>{escape(ticker)}</b></td>"
+        f'<td class="ss-num">{escape(format_or_dash(quote["price"], "${:,.2f}"))}</td>'
+        f'<td class="ss-num {change_class}">{escape(format_or_dash(change, "{:+.2f}%"))}</td>'
+        f'<td class="ss-num">{escape(format_or_dash(stock_beta.get(ticker), "{:.2f}"))}</td>'
+        f'<td class="ss-num">{escape(format_or_dash(weight, "{:.0%}"))}</td></tr>'
     )
+
+st.markdown(
+    '<div class="ss-card"><div class="ss-card-title">Holdings &amp; Risk Matrix</div>'
+    '<table class="ss-table"><thead><tr><th>Ticker</th><th class="ss-num">Price</th>'
+    '<th class="ss-num">Daily Change</th><th class="ss-num">Beta</th><th class="ss-num">Weight</th></tr></thead>'
+    f"<tbody>{rows_html}</tbody></table></div>",
+    unsafe_allow_html=True,
+)
+
+st.write("")
 
 # --- Plain-English warnings from the risk service ---
 if risk["warnings"]:
     st.markdown("#### Things to watch")
     for warning in risk["warnings"]:
-        st.warning(warning.replace("$", "\\$"), icon=":material/warning:")
+        st.markdown(
+            f'<div class="ss-alert ss-alert-warn">⚠️ {escape(warning)}</div>',
+            unsafe_allow_html=True,
+        )
+else:
+    st.markdown('<div class="ss-alert ss-alert-ok">✓ No major risk flags</div>', unsafe_allow_html=True)
 
 with st.expander("What do these numbers mean?"):
     st.markdown(
@@ -221,4 +256,6 @@ with st.expander("What do these numbers mean?"):
         "- **Sharpe ratio:** return per unit of risk over the past year. Above 1 is generally good.\n"
         "- **Weight:** how much of your money is in each stock."
     )
-st.caption("Based on the past year of daily prices. For learning, not financial advice.")
+
+st.divider()
+st.caption("For learning only, not financial advice.")

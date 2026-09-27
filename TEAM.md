@@ -6,7 +6,7 @@ Replace "Teammate 1-4" with real names once you've decided who does what.
 
 | Person | Role | Owns these files |
 |---|---|---|
-| **Teammate 1** | Stock data & home page | `app.py`<br>`pages/1_Stock_Detail.py`<br>`services/stock_data.py`<br>`utils/ui.py` |
+| **Teammate 1** | Stock data & home page | `my_stocks.py`<br>`pages/1_Stock_Detail.py`<br>`services/stock_data.py`<br>`utils/ui.py` |
 | **Teammate 2** | AI summaries | `services/ai_summary.py` (except `answer_question`)<br>`pages/2_Daily_Summary.py` |
 | **Teammate 3** | Risk math & charts | `services/risk.py`<br>`pages/3_Portfolio_Risk.py`<br>`tests/test_risk.py` |
 | **Teammate 4** | AI safety, chat & accuracy | `services/security.py`<br>`pages/4_Ask_StockSense.py`<br>`answer_question()` in `services/ai_summary.py`<br>`eval/` |

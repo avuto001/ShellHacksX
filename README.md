@@ -84,7 +84,8 @@ The app opens in your web browser. If it doesn't, go to **http://localhost:8501*
 ## Where things go
 
 ```
-app.py              Home page: "My Stocks"
+app.py              Starts the app and builds the sidebar
+my_stocks.py        Home page: "My Stocks"
 pages/              The other pages of the app
 services/           Behind-the-scenes code: fetching data, AI, math
 utils/              Small helpers shared by every page
@@ -92,7 +93,9 @@ tests/              Automatic checks that the code works
 eval/               Hand-labeled headlines for measuring AI accuracy
 ```
 
-**`app.py`** is the **home page** ("My Stocks") and the first thing you see when the app opens. You add and remove stocks here.
+**`app.py`** starts the app and builds the sidebar (logo, page links and beginner tip). To add a page to the sidebar, add it to the `PAGES` list there.
+
+**`my_stocks.py`** is the **home page** ("My Stocks") and the first thing you see when the app opens. You add and remove stocks here.
 
 **`pages/`** holds the **other pages.** Each `.py` file becomes a page in the sidebar. The number at the start of the file name sets the order, and the rest becomes the page name. For example, `1_Stock_Detail.py` shows up as "Stock Detail".
 

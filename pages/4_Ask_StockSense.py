@@ -5,11 +5,11 @@ import streamlit as st
 from services.ai_summary import answer_question
 from utils.portfolio import load_portfolio_data
 from utils.state import get_portfolio
-from utils.ui import beginner_tip, link_citations, page_header
+from utils.ui import apply_styles, link_citations, page_header
 from utils.ui import html_text as escape
 
 page_header("Ask StockSense", "Get friendly summaries and simple finance clarifications instantly")
-beginner_tip()
+apply_styles()
 
 SUGGESTIONS = ["What happened today?", "Should I diversify?", "Explain my risk score"]
 
