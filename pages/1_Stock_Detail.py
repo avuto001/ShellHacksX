@@ -6,7 +6,8 @@ import streamlit as st
 
 from services.ai_summary import summarize_stock
 from services.news_cleaner import clean_news
-from services.stock_data import StockDataError, _get, get_company_name, get_news, get_quote
+from services.stock_data import StockDataError, get_company_name, get_news, get_quote
+from utils.portfolio import get_industry
 from utils.price_history import PERIODS, get_price_history
 from utils.state import get_tickers
 from utils.ui import GREEN, RED, beginner_tip, change_color, link_citations, page_header
@@ -60,15 +61,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-@st.cache_data(ttl=24 * 60 * 60, show_spinner=False)
-def get_industry(ticker):
-    """Return the company's industry (e.g. "Technology"), or None if Finnhub doesn't know it."""
-    try:
-        return _get("stock/profile2", {"symbol": ticker.upper()}).get("finnhubIndustry") or None
-    except StockDataError:
-        return None
 
 
 def time_ago(timestamp):

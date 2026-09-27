@@ -1,9 +1,20 @@
 """Gathers everything the AI needs about the portfolio, in the format
 services/ai_summary.py expects."""
 
+import streamlit as st
+
 from services.news_cleaner import clean_news
-from services.stock_data import StockDataError, get_company_name, get_news, get_quote
+from services.stock_data import StockDataError, _get, get_company_name, get_news, get_quote
 from utils.state import get_portfolio
+
+
+@st.cache_data(ttl=24 * 60 * 60, show_spinner=False)
+def get_industry(ticker):
+    """Return the company's industry (e.g. "Technology"), or None if Finnhub doesn't know it."""
+    try:
+        return _get("stock/profile2", {"symbol": ticker.upper()}).get("finnhubIndustry") or None
+    except StockDataError:
+        return None
 
 
 def load_portfolio_data():
