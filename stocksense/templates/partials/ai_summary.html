@@ -1,0 +1,16 @@
+{# AI summary snippet. Loaded into the Stock Detail page by app.js.
+   The "jargon" filter (in app.py) adds hover definitions to terms like "dividend". #}
+
+<div class="space-y-4 text-[15px] leading-relaxed text-gray-300">
+  {% for paragraph in summary.summary_paragraphs %}
+    <p>{{ paragraph | jargon }}</p>
+  {% endfor %}
+</div>
+
+<div class="mt-5 flex gap-3 rounded-lg bg-accent/10 border border-accent/25 p-4">
+  <i data-lucide="info" class="h-5 w-5 shrink-0 text-blue-400"></i>
+  <div>
+    <p class="text-xs font-semibold uppercase tracking-wider text-blue-300 mb-1">Beginner Insight</p>
+    <p class="text-sm leading-relaxed text-gray-200">{{ summary.beginner_insight | jargon }}</p>
+  </div>
+</div>

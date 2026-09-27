@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Not found{% endblock %}
+
+{% block content %}
+<div class="rounded-xl bg-card border border-line p-10 sm:p-14 text-center">
+  <div class="mx-auto mb-5 grid place-items-center h-14 w-14 rounded-xl bg-white/5 ring-1 ring-line">
+    <i data-lucide="search-x" class="h-7 w-7 text-gray-400"></i>
+  </div>
+  <h1 class="text-2xl font-bold mb-2">We couldn't find that page</h1>
+  <p class="text-gray-400">The stock or page you're looking for doesn't exist.</p>
+  <a href="{{ url_for('stock_detail') }}"
+     class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
+    Back to Stock Detail
+  </a>
+</div>
+{% endblock %}

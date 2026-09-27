@@ -1,0 +1,17 @@
+{# Placeholder card for pages that aren't built yet. Expects a "page" dict from app.py. #}
+
+<h1 class="text-3xl font-extrabold tracking-tight mb-6">{{ page.title }}</h1>
+
+<div class="rounded-xl bg-card border border-line p-10 sm:p-14 text-center">
+  <div class="mx-auto mb-5 grid place-items-center h-14 w-14 rounded-xl bg-accent/15 ring-1 ring-accent/30">
+    <i data-lucide="{{ page.icon }}" class="h-7 w-7 text-accent"></i>
+  </div>
+  <span class="inline-block mb-3 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/5 text-gray-300 ring-1 ring-line">
+    Coming soon
+  </span>
+  <p class="max-w-md mx-auto text-gray-400">{{ page.description }}</p>
+  <a href="{{ url_for('stock_detail') }}"
+     class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-sm font-semibold text-white hover:bg-blue-600 transition-colors">
+    <i data-lucide="chart-line" class="h-4 w-4"></i> Explore Stock Detail
+  </a>
+</div>

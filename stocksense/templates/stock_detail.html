@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}{{ quote.ticker }}{% endblock %}
+
+{% block content %}
+
+<!-- Watchlist: quick links to switch stocks -->
+<nav class="flex gap-2 overflow-x-auto no-scrollbar mb-6 -mx-4 px-4 sm:mx-0 sm:px-0" aria-label="Watchlist">
+  {% for symbol in watchlist %}
+    <a href="{{ url_for('stock_detail', ticker=symbol) }}"
+       class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
+              {{ 'bg-accent border-accent text-white' if symbol == quote.ticker
+                 else 'bg-card border-line text-gray-400 hover:text-gray-200 hover:border-gray-600' }}"
+       {% if symbol == quote.ticker %}aria-current="page"{% endif %}>
+      {{ symbol }}
+    </a>
+  {% endfor %}
+</nav>
+
+<!-- 1. Header: company on the left, price on the right -->
+<section class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-8">
+  <div class="flex items-center gap-4">
+    <div class="grid place-items-center h-14 w-14 shrink-0 rounded-xl bg-card border border-line">
+      <i data-lucide="building-2" class="h-7 w-7 text-accent"></i>
+    </div>
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">{{ quote.ticker }}</h1>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent/15 text-blue-300 ring-1 ring-accent/30">
+          {{ quote.sector }}
+        </span>
+      </div>
+      <p class="mt-1 text-gray-400">{{ quote.name }}</p>
+    </div>
+  </div>
+
+  {% set is_up = quote.change_percent >= 0 %}
+  <div class="sm:text-right">
+    <p class="text-4xl sm:text-5xl font-bold tracking-tight tabular-nums">${{ quote.price | money }}</p>
+    <div class="mt-2 flex items-center sm:justify-end gap-3">
+      <span class="text-xs text-gray-500">USD &bull; Live Market Quote</span>
+      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-sm font-semibold tabular-nums
+                   {{ 'bg-gain/15 text-gain' if is_up else 'bg-loss/15 text-loss' }}">
+        <i data-lucide="{{ 'arrow-up' if is_up else 'arrow-down' }}" class="h-3.5 w-3.5"></i>
+        {{ '%+.2f' | format(quote.change_percent) }}%
+        <span class="sr-only">{{ 'up' if is_up else 'down' }} today</span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Chart card -->
+<section class="rounded-xl bg-card border border-line p-5 sm:p-6 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+    <div>
+      <h2 class="text-lg font-semibold">Historical Performance</h2>
+      <!-- Filled in by chart.js, e.g. "+4.21% past month" -->
+      <p id="period-change" class="h-5 text-sm text-gray-400 tabular-nums"></p>
+    </div>
+
+    <div class="inline-flex self-start p-1 rounded-lg bg-bg border border-line" role="group" aria-label="Chart timeframe">
+      {% for tf in timeframes %}
+        <button type="button" data-timeframe="{{ tf }}"
+                class="tf-btn px-3 sm:px-4 py-1.5 rounded-md text-sm font-semibold transition-colors
+                       {{ 'bg-accent text-white' if tf == default_timeframe else 'text-gray-400 hover:text-gray-200' }}"
+                aria-pressed="{{ 'true' if tf == default_timeframe else 'false' }}">
+          {{ tf }}
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="relative h-72 sm:h-80">
+    <canvas id="price-chart"
+            data-history-url="{{ url_for('api_history', ticker=quote.ticker, timeframe='__TF__') }}"
+            data-default-timeframe="{{ default_timeframe }}"
+            aria-label="Price chart for {{ quote.ticker }}" role="img"></canvas>
+    <!-- Shown until the first chart data arrives -->
+    <div id="chart-skeleton" class="absolute inset-0 skeleton"></div>
+    <!-- Shown if the chart data fails to load -->
+    <div id="chart-error" class="hidden absolute inset-0 grid place-items-center bg-card p-4"></div>
+  </div>
+</section>
+
+<!-- 3. News (left) and AI summary (right). Stacks on smaller screens. -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+  <section>
+    <h2 class="flex items-center gap-2 text-lg font-semibold mb-4">
+      <i data-lucide="newspaper" class="h-5 w-5 text-gray-400"></i>
+      Latest News Headlines
+    </h2>
+    <!-- app.js replaces the skeleton with the HTML from data-src -->
+    <div data-src="{{ url_for('news_partial', ticker=quote.ticker) }}"
+         data-error-message="Couldn't load news, try again."
+         aria-live="polite" aria-busy="true">
+      <div class="space-y-3">
+        {% for _ in range(4) %}
+          <div class="rounded-xl bg-card border border-line p-4">
+            <div class="skeleton h-4 w-11/12 mb-2"></div>
+            <div class="skeleton h-4 w-2/3 mb-3"></div>
+            <div class="skeleton h-3 w-1/3"></div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="ai-card rounded-xl p-5 sm:p-6">
+      <h2 class="flex items-center gap-2 text-lg font-semibold mb-4">
+        <i data-lucide="sparkles" class="h-5 w-5 text-accent"></i>
+        AI Plain-English Summary
+      </h2>
+      <div data-src="{{ url_for('summary_partial', ticker=quote.ticker) }}"
+           data-error-message="Couldn't load the summary, try again."
+           aria-live="polite" aria-busy="true">
+        <div class="space-y-2.5">
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-4/5"></div>
+          <div class="h-2"></div>
+          <div class="skeleton h-4 w-full"></div>
+          <div class="skeleton h-4 w-3/4"></div>
+          <div class="skeleton h-20 w-full mt-5"></div>
+        </div>
+      </div>
+    </div>
+    <p class="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
+      <i data-lucide="info" class="h-3.5 w-3.5"></i>
+      Educational content, not financial advice.
+    </p>
+  </section>
+
+</div>
+
+<!-- Error box used by app.js and chart.js when something fails to load -->
+<template id="load-error-template">
+  <div class="flex items-start gap-3 rounded-xl border border-loss/30 bg-loss/5 p-4">
+    <i data-lucide="circle-alert" class="h-5 w-5 shrink-0 text-loss"></i>
+    <div>
+      <p class="text-sm text-gray-200" data-error-text></p>
+      <button type="button" data-retry
+              class="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-400 hover:text-blue-300">
+        <i data-lucide="rotate-cw" class="h-4 w-4"></i> Retry
+      </button>
+    </div>
+  </div>
+</template>
+
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+{% endblock %}
