@@ -1,7 +1,5 @@
 # This file is the Stock Detail page
-import re
 import time
-from html import escape as _escape
 
 import altair as alt
 import streamlit as st
@@ -11,7 +9,8 @@ from services.news_cleaner import clean_news
 from services.stock_data import StockDataError, _get, get_company_name, get_news, get_quote
 from utils.price_history import PERIODS, get_price_history
 from utils.state import get_tickers
-from utils.ui import GREEN, RED, beginner_tip, change_color, page_header
+from utils.ui import GREEN, RED, beginner_tip, change_color, link_citations, page_header
+from utils.ui import html_text as escape
 
 page_header("Stock Detail", "Price, news and an AI summary for one stock.")
 beginner_tip()
@@ -55,8 +54,6 @@ st.markdown(
     .ss-insight {{background: {PRIMARY}14; border-radius: 8px; padding: 10px 12px;
                  margin-top: 12px; font-size: .9rem;}}
     .ss-num {{color: {PRIMARY}; font-weight: 700; margin-right: 4px;}}
-    .ss-cite {{color: {PRIMARY}; font-size: .75rem; font-weight: 600; text-decoration: none;
-              vertical-align: super;}}
     .ss-sentiment {{display: inline-block; border-radius: 6px; padding: 2px 10px; font-size: .8rem;
                    font-weight: 600; margin-bottom: 8px;}}
     </style>
@@ -72,24 +69,6 @@ def get_industry(ticker):
         return _get("stock/profile2", {"symbol": ticker.upper()}).get("finnhubIndustry") or None
     except StockDataError:
         return None
-
-
-def escape(text):
-    """Make text safe for HTML, and stop Streamlit reading "$...$" as a math formula."""
-    return _escape(str(text)).replace("$", "&#36;")
-
-
-def link_citations(text, articles):
-    """Turn each [n] in the summary into a small link to article n."""
-    urls = {a["id"]: a["url"] for a in articles}
-
-    def to_link(match):
-        url = urls.get(int(match.group(1)))
-        if not url:
-            return match.group(0)
-        return f'<a class="ss-cite" href="{escape(url)}" target="_blank">[{match.group(1)}]</a>'
-
-    return re.sub(r"\[(\d+)\]", to_link, text)
 
 
 def time_ago(timestamp):
