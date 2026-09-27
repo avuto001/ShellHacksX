@@ -68,7 +68,6 @@ if not filtered_df.empty:
             "restaurants": "Restaurant / Brand Portfolio"
         }
     )
-
     st.dataframe(
         display_df,
         use_container_width=True,
@@ -85,14 +84,19 @@ st.divider()
 
 # --- 2. Interactive Map (Below Table) ---
 st.markdown("#### 🗺️ Continental US Firm Locations")
+print(filtered_df)
 
+filtered_df['Result'] = filtered_df.apply(
+        lambda row:500000 * (float(row['irr'].replace("%",''))/100),
+        axis=1
+ );
 # Map setup
 scatter_layer = pdk.Layer(
     "ScatterplotLayer",
     data=filtered_df,
     get_position=["lon", "lat"],
     get_fill_color="color",
-    get_radius=90000,
+    get_radius="Result",
     pickable=True,
     auto_highlight=True,
 )
