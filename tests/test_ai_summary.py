@@ -7,7 +7,14 @@ import anthropic
 import httpx2
 
 from services import ai_summary
-from services.ai_summary import build_prompt, summarize_stock, validate_response
+from services.ai_summary import (
+    answer_question,
+    build_portfolio_prompt,
+    build_prompt,
+    summarize_portfolio_day,
+    summarize_stock,
+    validate_response,
+)
 
 ARTICLES = [
     {"id": 1, "headline": "Apple launches new iPhone", "summary": "Sales start Friday.", "source": "Reuters", "url": "https://example.com/1"},
@@ -28,7 +35,7 @@ def use_fake_claude(monkeypatch, replies):
     """Make summarize_stock get `replies` (one per attempt) instead of calling Claude."""
     calls = []
 
-    def fake_ask_claude(system_prompt, user_prompt, attempt):
+    def fake_ask_claude(system_prompt, messages, attempt, max_tokens=None):
         calls.append(attempt)
         reply = replies[len(calls) - 1]
         if isinstance(reply, Exception):
@@ -144,3 +151,102 @@ def test_api_error_gives_fallback(monkeypatch):
     result = summarize_stock("AAPL", "Apple Inc", ARTICLES, QUOTE)
     assert result["available"] is False
     assert "connect" in result["summary"]
+
+
+# --- summarize_portfolio_day ---
+
+PORTFOLIO = [
+    {"ticker": "AAPL", "name": "Apple Inc", "shares": 10, "quote": {"price": 200.0, "change": -2.0, "percent_change": -0.99}, "news": ARTICLES},
+    {"ticker": "MSFT", "name": "Microsoft Corp", "shares": 5, "quote": {"price": 400.0, "change": 4.0, "percent_change": 1.01},
+     "news": [{"id": 1, "headline": "Microsoft cloud sales jump", "summary": "", "source": "Bloomberg", "url": "https://example.com/3"}]},
+]
+
+
+def test_portfolio_articles_are_renumbered_without_repeats():
+    result = summarize_portfolio_day([])  # just to make sure the empty case is fine
+    assert result["available"] is False
+    from services.ai_summary import _number_portfolio_articles
+    articles = _number_portfolio_articles(PORTFOLIO)
+    ids = []
+    tickers = []
+    for article in articles:
+        ids.append(article["id"])
+        tickers.append(article["ticker"])
+    assert ids == [1, 2, 3]
+    assert tickers == ["AAPL", "AAPL", "MSFT"]
+    # The original article still has its old number
+    assert PORTFOLIO[1]["news"][0]["id"] == 1
+
+
+def test_portfolio_prompt_has_the_math_done():
+    from services.ai_summary import _number_portfolio_articles
+    prompt = build_portfolio_prompt(PORTFOLIO, _number_portfolio_articles(PORTFOLIO))
+    # 10 x $200 + 5 x $400 = $4,000 total; -$20 + $20 = $0 change today
+    assert "worth $4,000.00" in prompt
+    assert "+0.00 dollars" in prompt
+    assert "[3] (MSFT) Microsoft cloud sales jump" in prompt
+
+
+def test_portfolio_recap_is_returned(monkeypatch):
+    reply = json.dumps({"summary": "Your portfolio was flat today. Microsoft rose after strong cloud sales [3].", "citations": [3]})
+    use_fake_claude(monkeypatch, [reply])
+    result = summarize_portfolio_day(PORTFOLIO)
+    assert result["available"] is True
+    assert result["citations"] == [3]
+    assert len(result["articles"]) == 3
+
+
+def test_portfolio_recap_with_fake_citation_gives_fallback(monkeypatch):
+    bad = json.dumps({"summary": "Microsoft rose [8].", "citations": [8]})
+    use_fake_claude(monkeypatch, [bad, bad])
+    result = summarize_portfolio_day(PORTFOLIO)
+    assert result["available"] is False
+
+
+# --- answer_question ---
+
+
+def test_answer_is_returned(monkeypatch):
+    reply = json.dumps({"answer": "Apple fell a little today, maybe because of a court case [2].", "citations": [2]})
+    use_fake_claude(monkeypatch, [reply])
+    result = answer_question("Why did Apple drop?", PORTFOLIO)
+    assert result["available"] is True
+    assert result["citations"] == [2]
+
+
+def test_general_answer_needs_no_citations(monkeypatch):
+    reply = json.dumps({"answer": "A dividend is a small payment a company gives to its shareholders.", "citations": []})
+    use_fake_claude(monkeypatch, [reply])
+    result = answer_question("What is a dividend?", PORTFOLIO)
+    assert result["available"] is True
+
+
+def test_advice_answer_gives_fallback(monkeypatch):
+    bad = json.dumps({"answer": "Apple is a safe bet right now.", "citations": []})
+    use_fake_claude(monkeypatch, [bad, bad])
+    result = answer_question("Should I buy Apple?", PORTFOLIO)
+    assert result["available"] is False
+
+
+def test_history_is_sent_before_the_new_question(monkeypatch):
+    sent = []
+
+    def fake_ask_claude(system_prompt, messages, attempt, max_tokens=None):
+        sent.append(messages)
+        return json.dumps({"answer": "Sure.", "citations": []})
+
+    monkeypatch.setattr(ai_summary, "_ask_claude", fake_ask_claude)
+    monkeypatch.setattr(ai_summary, "_get_api_key", lambda: "fake-key")
+    history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
+    answer_question("Why did Apple drop?", PORTFOLIO, history)
+    messages = sent[0]
+    assert messages[0] == {"role": "user", "content": "Hi"}
+    assert messages[1] == {"role": "assistant", "content": "Hello!"}
+    assert messages[2]["content"].endswith("Question: Why did Apple drop?")
+
+
+def test_empty_question_does_not_call_claude(monkeypatch):
+    calls = use_fake_claude(monkeypatch, [])
+    result = answer_question("   ", PORTFOLIO)
+    assert calls == []
+    assert result["available"] is False
