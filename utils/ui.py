@@ -24,6 +24,13 @@ def page_header(title, subtitle=None):
         st.caption(subtitle)
 
 
+def beginner_tip():
+    """Show a short investing tip in the sidebar."""
+    with st.sidebar.container(border=True):
+        st.markdown("💡 **Beginner Tip**")
+        st.caption("Diversification means spreading money across different stocks to reduce risk.")
+
+
 def coming_soon(description):
     """Show a note explaining what a page will do once it's built."""
     st.info(f"🚧 **Coming soon.** {description}")
