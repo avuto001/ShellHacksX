@@ -9,6 +9,7 @@ Tip: numpy and pandas are already installed (Streamlit depends on them).
 "Returns" below means daily percent changes as decimals, e.g. a stock that went
 from $100 to $102 has a return of 0.02.
 """
+import numpy as np
 
 
 def concentration(values):
@@ -79,3 +80,22 @@ def max_drawdown(prices):
     """
     # TODO: build this
     return 0.0
+
+
+def calculate_goal_progress(current_val: float, target_val: float, target_year: int, start_year: int = 2026):
+    """
+    Calculates the required annual return (CAGR) and yearly milestone values 
+    to hit a financial goal target.
+    """
+    years = max(target_year - start_year, 1)
+    if current_val <= 0:
+        return 0.0, {}
+    
+    # Calculate required compound annual growth rate (CAGR)
+    required_cagr = (target_val / current_val) ** (1 / years) - 1
+    
+    # Generate yearly milestone values map
+    timeline = list(range(start_year, target_year + 1))
+    trajectory = {year: current_val * ((1 + required_cagr) ** idx) for idx, year in enumerate(timeline)}
+    
+    return required_cagr, trajectory
