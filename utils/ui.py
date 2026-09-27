@@ -107,7 +107,7 @@ def link_citations(html, articles):
 
 def page_header(title, subtitle=None):
     """Set up the page and show its title. Call this first on every page."""
-    st.set_page_config(page_title=f"{title} · StockSense", page_icon="📈")
+    st.set_page_config(page_title=f"{title} · StockSense", page_icon=":material/trending_up:")
     st.title(title)
     if subtitle:
         st.caption(subtitle)
@@ -160,7 +160,7 @@ def metric_card(label, value, description):
 
 def coming_soon(description):
     """Show a note explaining what a page will do once it's built."""
-    st.info(f"🚧 **Coming soon.** {description}")
+    st.info(f"**Coming soon.** {description}")
 
 
 def stock_card(ticker, name, quote, shares=None):

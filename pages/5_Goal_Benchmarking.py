@@ -140,8 +140,14 @@ deck = pdk.Deck(
 st.pydeck_chart(deck, use_container_width=True)
 
 # Sector Legend
+def swatch(color, label):
+    return (
+        f'<span style="display:inline-block; width:12px; height:12px; border-radius:3px; '
+        f'background:{color}; margin-right:6px; vertical-align:middle;"></span><b>{label}</b>'
+    )
+
 l1, l2, l3, l4 = st.columns(4)
-l1.markdown("🟦 **Technology**")
-l2.markdown("🟧 **Consumer & Dining**")
-l3.markdown("🟩 **Healthcare**")
-l4.markdown("🟪 **Energy & Industrials**")
+l1.markdown(swatch("rgb(0,122,255)", "Technology"), unsafe_allow_html=True)
+l2.markdown(swatch("rgb(255,149,0)", "Consumer &amp; Dining"), unsafe_allow_html=True)
+l3.markdown(swatch("rgb(52,199,89)", "Healthcare"), unsafe_allow_html=True)
+l4.markdown(swatch("rgb(175,82,222)", "Energy &amp; Industrials"), unsafe_allow_html=True)

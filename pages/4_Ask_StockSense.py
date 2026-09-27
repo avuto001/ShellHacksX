@@ -70,7 +70,7 @@ def show_message(message):
             meaning = vocabulary_for(message["content"])
             if meaning:
                 st.markdown(
-                    f'<div class="ss-vocab">📖 <b>Quick Vocabulary:</b> {escape(meaning)}</div>',
+                    f'<div class="ss-vocab"><b>Quick Vocabulary:</b> {escape(meaning)}</div>',
                     unsafe_allow_html=True,
                 )
 

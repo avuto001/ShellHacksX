@@ -65,7 +65,7 @@ def sparkline(prices, color, width=110, height=36):
 with st.form("add_stock", clear_on_submit=True):
     col1, col2, col3 = st.columns([4, 1, 1], vertical_alignment="bottom")
     ticker = col1.text_input(
-        "Look up a stock", placeholder="🔍 Look up a stock by ticker (e.g. NVDA, AAPL)...",
+        "Look up a stock", placeholder="Look up a stock by ticker (e.g. NVDA, AAPL)...",
         label_visibility="collapsed",
     )
     shares = col2.number_input("Shares", min_value=0.0, value=1.0, step=1.0, label_visibility="collapsed")

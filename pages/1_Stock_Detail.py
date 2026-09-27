@@ -17,9 +17,9 @@ page_header("Stock Detail", "Price, news and an AI summary for one stock.")
 apply_styles()
 
 SENTIMENTS = {
-    "positive": ("🟢", "News looks positive", GREEN),
-    "negative": ("🔴", "News looks negative", RED),
-    "neutral": ("⚪", "News looks neutral", "#6b7280"),
+    "positive": ("News looks positive", GREEN),
+    "negative": ("News looks negative", RED),
+    "neutral": ("News looks neutral", "#6b7280"),
 }
 
 # Shown when the AI summary doesn't include its own beginner term
@@ -132,7 +132,7 @@ with st.container(border=True):
             )
             .properties(height=260)
         )
-        st.altair_chart(chart, width="stretch")
+        st.altair_chart(chart, use_container_width=True)
     else:
         st.caption("Price history isn't available for this stock right now.")
 
@@ -153,15 +153,15 @@ with news_col:
         )
 
 with summary_col:
-    st.markdown("#### ✨ AI Plain-English Summary")
+    st.markdown("#### AI Plain-English Summary")
     with st.spinner("Claude is reading the news..."):
         result = summarize_stock(ticker, name, articles, quote)
 
     if result["available"]:
-        icon, label, sentiment_color = SENTIMENTS.get(result["sentiment"], SENTIMENTS["neutral"])
+        label, sentiment_color = SENTIMENTS.get(result["sentiment"], SENTIMENTS["neutral"])
         sentiment = (
             f'<span class="ss-sentiment" style="color:{sentiment_color}; background:{sentiment_color}22;">'
-            f"{icon} {label}</span>"
+            f"{label}</span>"
         )
         body = f"<p>{link_citations(escape(result['summary']), articles)}</p>"
     else:

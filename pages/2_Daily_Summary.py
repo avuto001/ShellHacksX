@@ -56,7 +56,7 @@ col3.metric("Stocks", len(stocks), border=True)
 recap_col, movers_col = st.columns([3, 2], gap="large")
 
 with recap_col:
-    st.markdown("#### ✨ Today's recap")
+    st.markdown("#### Today's recap")
     if result["available"]:
         body = link_citations(escape(result["summary"]), result["articles"])
     else:

@@ -242,7 +242,7 @@ if risk["warnings"]:
     st.markdown("#### Things to watch")
     for warning in risk["warnings"]:
         st.markdown(
-            f'<div class="ss-alert ss-alert-warn">⚠️ {escape(warning)}</div>',
+            f'<div class="ss-alert ss-alert-warn">{escape(warning)}</div>',
             unsafe_allow_html=True,
         )
 else:
