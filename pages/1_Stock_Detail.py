@@ -1,11 +1,13 @@
 # This file is the Stock Detail page
+import re
 import time
 from html import escape as _escape
 
 import altair as alt
 import streamlit as st
 
-from services.ai_summary import summarize_news
+from services.ai_summary import summarize_stock
+from services.news_cleaner import clean_news
 from services.stock_data import StockDataError, _get, get_company_name, get_news, get_quote
 from utils.price_history import PERIODS, get_price_history
 from utils.state import get_tickers
@@ -14,6 +16,13 @@ from utils.ui import GREEN, RED, beginner_tip, change_color, page_header
 page_header("Stock Detail", "Price, news and an AI summary for one stock.")
 beginner_tip()
 
+SENTIMENTS = {
+    "positive": ("🟢", "News looks positive", GREEN),
+    "negative": ("🔴", "News looks negative", RED),
+    "neutral": ("⚪", "News looks neutral", "#6b7280"),
+}
+
+# Shown when the AI summary doesn't include its own beginner term
 BEGINNER_INSIGHTS = [
     '"Defensive stocks" tend to hold value during market dips.',
     "A single day's move rarely matters much for a long-term investor.",
@@ -45,6 +54,11 @@ st.markdown(
                  background: {CARD}66; line-height: 1.6;}}
     .ss-insight {{background: {PRIMARY}14; border-radius: 8px; padding: 10px 12px;
                  margin-top: 12px; font-size: .9rem;}}
+    .ss-num {{color: {PRIMARY}; font-weight: 700; margin-right: 4px;}}
+    .ss-cite {{color: {PRIMARY}; font-size: .75rem; font-weight: 600; text-decoration: none;
+              vertical-align: super;}}
+    .ss-sentiment {{display: inline-block; border-radius: 6px; padding: 2px 10px; font-size: .8rem;
+                   font-weight: 600; margin-bottom: 8px;}}
     </style>
     """,
     unsafe_allow_html=True,
@@ -63,6 +77,19 @@ def get_industry(ticker):
 def escape(text):
     """Make text safe for HTML, and stop Streamlit reading "$...$" as a math formula."""
     return _escape(str(text)).replace("$", "&#36;")
+
+
+def link_citations(text, articles):
+    """Turn each [n] in the summary into a small link to article n."""
+    urls = {a["id"]: a["url"] for a in articles}
+
+    def to_link(match):
+        url = urls.get(int(match.group(1)))
+        if not url:
+            return match.group(0)
+        return f'<a class="ss-cite" href="{escape(url)}" target="_blank">[{match.group(1)}]</a>'
+
+    return re.sub(r"\[(\d+)\]", to_link, text)
 
 
 def time_ago(timestamp):
@@ -92,6 +119,7 @@ except StockDataError as e:
     st.stop()
 
 industry = get_industry(ticker)
+articles = clean_news(news, ticker, name)  # no repeats, numbered so the AI can cite them
 
 # --- Header: ticker, company, price ---
 pct = quote["percent_change"] or 0
@@ -142,12 +170,12 @@ news_col, summary_col = st.columns(2, gap="large")
 
 with news_col:
     st.markdown("#### Latest News Headlines")
-    if not news:
+    if not articles:
         st.info("No news found for this stock in the past week.")
-    for article in news[:5]:
+    for article in articles:
         st.markdown(
-            f'<div class="ss-news"><a href="{escape(article["url"])}" target="_blank">'
-            f'{escape(article["headline"])}</a><br>'
+            f'<div class="ss-news"><span class="ss-num">[{article["id"]}]</span>'
+            f'<a href="{escape(article["url"])}" target="_blank">{escape(article["headline"])}</a><br>'
             f'<span class="ss-muted"><span class="ss-source">{escape(article["source"])}</span>'
             f' • {time_ago(article["datetime"])}</span></div>',
             unsafe_allow_html=True,
@@ -155,16 +183,28 @@ with news_col:
 
 with summary_col:
     st.markdown("#### ✨ AI Plain-English Summary")
-    summary = summarize_news(ticker, news)
-    body = (
-        "".join(f"<p>{escape(p)}</p>" for p in summary.split("\n\n") if p.strip())
-        if summary
-        else '<p class="ss-muted">🚧 Coming soon: Claude will read this week\'s headlines and explain '
-        "in plain English what's going on with the company and whether the news looks good or bad.</p>"
-    )
-    insight = BEGINNER_INSIGHTS[sum(map(ord, ticker)) % len(BEGINNER_INSIGHTS)]
+    with st.spinner("Claude is reading the news..."):
+        result = summarize_stock(ticker, name, articles, quote)
+
+    if result["available"]:
+        icon, label, sentiment_color = SENTIMENTS.get(result["sentiment"], SENTIMENTS["neutral"])
+        sentiment = (
+            f'<span class="ss-sentiment" style="color:{sentiment_color}; background:{sentiment_color}22;">'
+            f"{icon} {label}</span>"
+        )
+        body = f"<p>{link_citations(escape(result['summary']), articles)}</p>"
+    else:
+        sentiment = ""
+        body = f'<p class="ss-muted">{escape(result["summary"])}</p>'
+
+    if result["insight_term"] and result["insight_text"]:
+        insight = f"<b>{escape(result['insight_term'])}:</b> {escape(result['insight_text'])}"
+    else:
+        insight = escape(BEGINNER_INSIGHTS[sum(map(ord, ticker)) % len(BEGINNER_INSIGHTS)])
+
     st.markdown(
-        f'<div class="ss-summary">{body}'
-        f'<div class="ss-insight">ⓘ <b>Beginner Insight:</b> {escape(insight)}</div></div>',
+        f'<div class="ss-summary">{sentiment}{body}'
+        f'<div class="ss-insight">ⓘ <b>Beginner Insight:</b> {insight}</div></div>',
         unsafe_allow_html=True,
     )
+    st.caption("AI explanation of the news, not financial advice. Numbers like [1] link to the article it came from.")
