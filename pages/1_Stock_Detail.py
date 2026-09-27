@@ -1,28 +1,18 @@
 # This file is the Stock Detail page
 import time
-from datetime import datetime
 from html import escape as _escape
 
 import altair as alt
-import requests
 import streamlit as st
 
 from services.ai_summary import summarize_news
 from services.stock_data import StockDataError, _get, get_company_name, get_news, get_quote
+from utils.price_history import PERIODS, get_price_history
 from utils.state import get_tickers
 from utils.ui import GREEN, RED, beginner_tip, change_color, page_header
 
 page_header("Stock Detail", "Price, news and an AI summary for one stock.")
 beginner_tip()
-
-# Chart buttons -> (Yahoo range, Yahoo interval)
-PERIODS = {
-    "1D": ("1d", "5m"),
-    "5D": ("5d", "30m"),
-    "1M": ("1mo", "1d"),
-    "YTD": ("ytd", "1d"),
-    "1Y": ("1y", "1d"),
-}
 
 BEGINNER_INSIGHTS = [
     '"Defensive stocks" tend to hold value during market dips.',
@@ -59,26 +49,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-@st.cache_data(ttl=5 * 60, show_spinner=False)
-def get_price_history(ticker, period):
-    """Return [(time, close price), ...] for the chart, or [] if Yahoo has no data."""
-    yahoo_range, interval = PERIODS[period]
-    try:
-        response = requests.get(
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
-            params={"range": yahoo_range, "interval": interval},
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=10,
-        )
-        response.raise_for_status()
-        result = response.json()["chart"]["result"][0]
-        times = result["timestamp"]
-        closes = result["indicators"]["quote"][0]["close"]
-    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
-        return []
-    return [(datetime.fromtimestamp(t), c) for t, c in zip(times, closes) if c is not None]
 
 
 @st.cache_data(ttl=24 * 60 * 60, show_spinner=False)
