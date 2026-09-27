@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} · StockSense</title>
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS (CDN build) + our theme colors -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: "#0b0f19",       // page background
+            card: "#111827",     // card background
+            line: "#1f2937",     // borders
+            accent: "#3b6fd8",   // active states
+            gain: "#22c55e",     // price up
+            loss: "#ef4444",     // price down
+          },
+          fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+
+  <!-- Lucide icons: write <i data-lucide="icon-name"></i> anywhere -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body class="min-h-screen bg-bg text-gray-100 font-sans antialiased">
+
+  <!-- Mobile top bar (hidden on large screens) -->
+  <header class="lg:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-bg/90 backdrop-blur border-b border-line">
+    <a href="{{ url_for('home') }}" class="flex items-center gap-2">
+      <span class="grid place-items-center h-8 w-8 rounded-lg bg-accent">
+        <i data-lucide="trending-up" class="h-4 w-4 text-white"></i>
+      </span>
+      <span class="font-bold">StockSense</span>
+    </a>
+    <button id="sidebar-open" type="button" class="p-2 -mr-2 rounded-lg text-gray-300 hover:bg-white/5"
+            aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+      <i data-lucide="menu" class="h-6 w-6"></i>
+    </button>
+  </header>
+
+  <!-- Dark overlay behind the sidebar on mobile -->
+  <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/60 hidden lg:hidden"></div>
+
+  <!-- Sidebar: always visible on large screens, slides in on mobile -->
+  <aside id="sidebar"
+         class="fixed inset-y-0 left-0 z-50 w-60 flex flex-col bg-bg border-r border-line
+                -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out">
+
+    <!-- Logo -->
+    <div class="flex items-center justify-between px-5 h-20">
+      <a href="{{ url_for('home') }}" class="flex items-center gap-3">
+        <span class="grid place-items-center h-10 w-10 rounded-xl bg-accent shadow-lg shadow-accent/30">
+          <i data-lucide="trending-up" class="h-5 w-5 text-white"></i>
+        </span>
+        <span class="leading-tight">
+          <span class="block text-lg font-bold tracking-tight">StockSense</span>
+          <span class="block text-[10px] font-semibold tracking-[0.15em] text-gray-500">FINANCIAL LITERACY</span>
+        </span>
+      </a>
+      <button id="sidebar-close" type="button" class="lg:hidden p-1.5 rounded-lg text-gray-400 hover:bg-white/5" aria-label="Close menu">
+        <i data-lucide="x" class="h-5 w-5"></i>
+      </button>
+    </div>
+
+    <!-- Navigation links -->
+    <nav class="flex-1 px-3 py-2 space-y-1" aria-label="Main">
+      {% for item in nav_items %}
+        {% set is_active = request.endpoint == item.endpoint %}
+        <a href="{{ url_for(item.endpoint) }}"
+           class="relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                  {{ 'bg-white/[0.06] text-white' if is_active else 'text-gray-400 hover:bg-white/[0.03] hover:text-gray-200' }}"
+           {% if is_active %}aria-current="page"{% endif %}>
+          <i data-lucide="{{ item.icon }}" class="h-5 w-5 {{ 'text-accent' if is_active }}"></i>
+          {{ item.label }}
+          {% if is_active %}
+            <!-- Blue bar on the right edge of the active item -->
+            <span class="absolute right-0 top-1.5 bottom-1.5 w-1 rounded-l-full bg-accent"></span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+
+    <!-- Beginner tip (a different one on each page load) -->
+    <div class="p-4">
+      <div class="rounded-xl bg-card border border-line p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="lightbulb" class="h-4 w-4 text-amber-400"></i>
+          <span class="text-xs font-semibold uppercase tracking-wider text-gray-300">Beginner Tip</span>
+        </div>
+        <p class="text-sm leading-relaxed text-gray-400">{{ beginner_tip }}</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Page content -->
+  <main class="lg:pl-60">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

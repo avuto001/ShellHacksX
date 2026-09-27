@@ -1,0 +1,112 @@
+/*
+ * StockSense custom styles.
+ * Most styling uses Tailwind classes in the templates. This file holds the few
+ * things that are easier to write as plain CSS.
+ */
+
+/* Stop wide tooltips from causing sideways scrolling on phones.
+   "clip" (unlike "hidden") keeps the sticky mobile header working. */
+body {
+  overflow-x: clip;
+}
+
+/* ---------- Loading skeletons (grey boxes with a moving shine) ---------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background-color: #1a2234;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ---------- AI summary card: blue glowing border ---------- */
+.ai-card {
+  background-color: #111827;
+  border: 1px solid rgba(59, 111, 216, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(59, 111, 216, 0.12),
+    0 0 28px -6px rgba(59, 111, 216, 0.45);
+}
+
+/* ---------- Jargon words with a hover/tap definition ---------- */
+.jargon {
+  position: relative;
+  cursor: help;
+  color: #e5e7eb;
+  border-bottom: 1px dashed #6b8fe0;
+  outline: none;
+}
+
+.jargon:focus-visible {
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px #3b6fd8;
+}
+
+.jargon-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(16rem, 75vw);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  background: #1f2937;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  color: #e5e7eb;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+
+/* Show on mouse hover, or on tap/keyboard focus (tabindex="0" makes it focusable) */
+.jargon:hover .jargon-tip,
+.jargon:focus .jargon-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+/* ---------- Chart: fade slightly while switching timeframes ---------- */
+#price-chart {
+  transition: opacity 0.2s ease;
+}
+
+.is-loading #price-chart {
+  opacity: 0.45;
+}
+
+/* ---------- Misc ---------- */
+
+/* Hide the scrollbar on the horizontally scrolling watchlist */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Respect the "reduce motion" accessibility setting */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+  .jargon-tip, #price-chart { transition: none; }
+}

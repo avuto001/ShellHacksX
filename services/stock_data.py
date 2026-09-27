@@ -65,6 +65,7 @@ def get_news(ticker, limit=10):
         {
             "headline": a["headline"],
             "url": a["url"],
+            "summary": a.get("summary", ""),
             "source": a.get("source", ""),
             "datetime": a.get("datetime", 0),
         }
