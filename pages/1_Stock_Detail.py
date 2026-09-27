@@ -9,6 +9,7 @@ from utils.ui import coming_soon, page_header, stock_card
 
 page_header("Stock Detail", "Price, news and an AI summary for one stock.")
 
+#Ty is doing the My stocks (my portfolio) from the Figma 
 tickers = get_tickers()
 if not tickers:
     st.info("Add stocks on the **My Stocks** page first.")
