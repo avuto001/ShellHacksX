@@ -9,6 +9,7 @@ Run it with:  flask run   (from inside the stocksense/ folder)
 
 import random
 import re
+import time
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, url_for
 from markupsafe import Markup, escape
@@ -49,12 +50,10 @@ COMING_SOON_PAGES = {
         "icon": "shield-alert",
         "description": "See how spread out your money is and which stocks move the most.",
     },
-    "ask": {
-        "title": "Ask StockSense",
-        "icon": "message-circle",
-        "description": "Ask questions about investing or your portfolio and get beginner-friendly answers.",
-    },
 }
+
+# Longest chat message we accept (the input box enforces this too).
+MAX_CHAT_MESSAGE_LENGTH = 500
 
 
 @app.context_processor
@@ -151,7 +150,14 @@ def portfolio_risk():
 
 @app.route("/ask")
 def ask():
-    return render_template("ask.html", page=COMING_SOON_PAGES["ask"])
+    # Past messages live in the browser (sessionStorage), so the page
+    # only needs the user's name and the suggestion chips.
+    return render_template(
+        "ask.html",
+        user=data_service.get_current_user(),
+        suggested_prompts=data_service.get_suggested_prompts(),
+        max_message_length=MAX_CHAT_MESSAGE_LENGTH,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +184,28 @@ def api_history(ticker, timeframe):
         period_label=data_service.TIMEFRAMES[timeframe],
         points=points,
     )
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    """Answer a chat message. Expects JSON like {"message": "What is Beta?"}."""
+    payload = request.get_json(silent=True) or {}
+    message = payload.get("message")
+    if not isinstance(message, str) or not message.strip():
+        return jsonify(error="Please type a question."), 400
+    if len(message) > MAX_CHAT_MESSAGE_LENGTH:
+        return jsonify(error="That message is too long."), 400
+
+    # Fake "thinking" time so the typing indicator is visible while testing.
+    # TODO: remove once the real AI is connected.
+    time.sleep(random.uniform(0.8, 1.2))
+
+    try:
+        reply = data_service.get_chat_response(message.strip(), data_service.get_mock_portfolio())
+    except data_service.DataServiceError as e:
+        return jsonify(error=str(e)), 502
+
+    return jsonify(reply)
 
 
 @app.route("/partials/news/<ticker>")

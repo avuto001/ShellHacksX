@@ -13,7 +13,7 @@ without any changes.
 Handy environment variables for testing the UI:
   STOCKSENSE_MOCK_DELAY=1.5   -> wait 1.5 seconds before returning data
                                  (so you can see the loading skeletons)
-  STOCKSENSE_MOCK_ERRORS=1    -> make news, summary and chart data fail
+  STOCKSENSE_MOCK_ERRORS=1    -> make news, summary, chart and chat fail
                                  (so you can see the error states)
 """
 
@@ -343,3 +343,227 @@ def _trading_days_between(start, end):
             days.append(day)
         day += timedelta(days=1)
     return days
+
+
+# ---------------------------------------------------------------------------
+# Ask StockSense (chat page)
+# ---------------------------------------------------------------------------
+
+# The user's sample holdings. Beta = how much the stock moves compared to the
+# whole market (1.0 = same as the market).
+_PORTFOLIO = [
+    {"ticker": "AAPL", "shares": 12, "beta": 1.24},
+    {"ticker": "NVDA", "shares": 8, "beta": 1.68},
+    {"ticker": "JNJ", "shares": 10, "beta": 0.55},
+    {"ticker": "KO", "shares": 20, "beta": 0.60},
+    {"ticker": "TSLA", "shares": 5, "beta": 1.95},
+]
+
+_SUGGESTED_PROMPTS = [
+    "What happened today?",
+    "Should I diversify?",
+    "Explain my risk score",
+]
+
+
+def get_current_user():
+    # TODO: replace with backend/AI call
+    """Return the signed-in user: {"first_name", "initial"}"""
+    return {"first_name": "Ty", "initial": "T"}
+
+
+def get_mock_portfolio():
+    # TODO: replace with backend/AI call
+    """Return the user's holdings: [{"ticker", "shares", "beta"}, ...]"""
+    return [dict(holding) for holding in _PORTFOLIO]
+
+
+def get_suggested_prompts():
+    # TODO: replace with backend/AI call
+    """Return a few example questions to show as clickable chips."""
+    return list(_SUGGESTED_PROMPTS)
+
+
+def get_chat_response(message, portfolio):
+    # TODO: replace with backend/AI call
+    """
+    Answer a chat message. Returns:
+    {
+        "paragraphs": [str, ...],      # **double asterisks** = bold
+        "vocab": {"term", "definition"} or None,
+        "related_tickers": [str, ...], # shown as clickable pills
+    }
+    The mock version picks a canned answer using simple keyword matching.
+    """
+    _simulate_network()
+    text = message.lower()
+
+    # Order matters: "Explain my risk score" contains "risk" too,
+    # so the more specific check comes first.
+    if "score" in text:
+        return _risk_score_reply(portfolio)
+    if "sharpe" in text:
+        return _sharpe_reply()
+    if "risk" in text or "beta" in text or "volatil" in text:
+        return _beta_reply(portfolio)
+    if "diversif" in text:
+        return _diversify_reply(portfolio)
+    if "today" in text or "happened" in text or "recap" in text:
+        return _daily_recap_reply(portfolio)
+
+    return {
+        "paragraphs": ["I'm still learning! Try asking about risk, diversification, or a finance term."],
+        "vocab": None,
+        "related_tickers": [],
+    }
+
+
+# ----- Helpers for the mock chat answers -----
+
+def _holding_values(portfolio):
+    """{ticker: dollar value of that holding} using the mock prices."""
+    return {h["ticker"]: h["shares"] * _COMPANIES[h["ticker"]]["price"] for h in portfolio}
+
+
+def _portfolio_beta(portfolio):
+    """Average Beta where bigger holdings count more."""
+    values = _holding_values(portfolio)
+    total = sum(values.values())
+    return sum(values[h["ticker"]] * h["beta"] for h in portfolio) / total
+
+
+def _beta_reply(portfolio):
+    by_beta = sorted(portfolio, key=lambda h: h["beta"])
+    steadiest, riskiest = by_beta[0], by_beta[-1]
+    beta = _portfolio_beta(portfolio)
+    if beta > 1.05:
+        comparison = "a bit bumpier than"
+    elif beta < 0.95:
+        comparison = "a bit calmer than"
+    else:
+        comparison = "about as bumpy as"
+
+    return {
+        "paragraphs": [
+            "A quick way to measure a stock's risk is **Beta**. It compares how much a stock moves "
+            "to the overall market, which has a Beta of **1.0**.",
+            f"In your portfolio, **{riskiest['ticker']}** has the highest Beta at **{riskiest['beta']:.2f}**. "
+            f"When the market moves 1%, {riskiest['ticker']} tends to move about {riskiest['beta']:.2f}%, "
+            f"up or down. **{steadiest['ticker']}** is your steadiest holding at **{steadiest['beta']:.2f}**.",
+            f"Averaged across everything you own, your portfolio's Beta is about **{beta:.2f}**, "
+            f"so it's {comparison} the market overall.",
+        ],
+        "vocab": {
+            "term": "Beta",
+            "definition": "How much a stock tends to move compared to the whole market. "
+                          "Above 1 means bigger swings, below 1 means smaller swings.",
+        },
+        "related_tickers": [riskiest["ticker"], steadiest["ticker"]],
+    }
+
+
+def _risk_score_reply(portfolio):
+    by_beta = sorted(portfolio, key=lambda h: h["beta"])
+    score = round(min(10, _portfolio_beta(portfolio) * 5.5), 1)
+    if score < 4:
+        level = "Low"
+    elif score < 7:
+        level = "Moderate"
+    else:
+        level = "High"
+    calm = [h["ticker"] for h in by_beta[:2]]
+
+    return {
+        "paragraphs": [
+            f"Your portfolio risk score is **{score} out of 10**, which counts as **{level}**. "
+            "It's a simple way to show how much your portfolio's value might swing up and down.",
+            "The score mostly comes from two things: how **volatile** your stocks are (their Beta) "
+            "and how spread out your money is. Very bumpy stocks, or a lot of money in one company, push it up.",
+            f"Your biggest contributor is **{by_beta[-1]['ticker']}**, while steadier stocks like "
+            f"**{calm[0]}** and **{calm[1]}** pull it down. A {level.lower()} score isn't good or bad on its own. "
+            "It depends on how comfortable you are with ups and downs.",
+        ],
+        "vocab": {
+            "term": "Volatility",
+            "definition": "How much and how quickly a price moves up and down. High volatility means bigger swings.",
+        },
+        "related_tickers": [by_beta[-1]["ticker"], *calm],
+    }
+
+
+def _sharpe_reply():
+    return {
+        "paragraphs": [
+            "The **Sharpe Ratio** tells you how much return you're getting for the amount of risk you take. "
+            "Think of it as \"reward per unit of bumpiness.\"",
+            "It takes an investment's return, subtracts what you could earn almost risk-free "
+            "(like U.S. Treasury bills), then divides by how much the price swings.",
+            "As a rough guide, a Sharpe Ratio **above 1** is considered good, **above 2** is very good, "
+            "and **below 1** means you may be taking on a lot of risk for the return you're getting.",
+        ],
+        "vocab": {
+            "term": "Risk-free rate",
+            "definition": "The return you could earn with almost no risk, usually based on short-term U.S. Treasury bills.",
+        },
+        "related_tickers": [],
+    }
+
+
+def _diversify_reply(portfolio):
+    values = _holding_values(portfolio)
+    total = sum(values.values())
+    largest = max(values, key=values.get)
+    sectors = {_COMPANIES[h["ticker"]]["sector"] for h in portfolio}
+
+    return {
+        "paragraphs": [
+            "**Diversification** means spreading your money across different companies and industries, "
+            "so one bad event doesn't hurt everything at once.",
+            f"You own **{len(portfolio)} stocks** across **{len(sectors)} sectors**, which is a good start. "
+            f"Your largest holding is **{largest}** at about **{values[largest] / total:.0%}** of your portfolio, "
+            f"so a rough stretch for {largest} would affect a big part of your money.",
+            "Many beginners diversify with **index funds**, which hold hundreds of companies in one purchase. "
+            "This is educational information, not a recommendation to buy or sell anything.",
+        ],
+        "vocab": {
+            "term": "Index fund",
+            "definition": "A fund that buys every company in a market index (like the S&P 500), "
+                          "so one purchase spreads your money across hundreds of stocks.",
+        },
+        "related_tickers": [largest],
+    }
+
+
+def _daily_recap_reply(portfolio):
+    quotes = [get_stock_quote(h["ticker"]) for h in portfolio]
+    values = _holding_values(portfolio)
+    total = sum(values.values())
+    overall = sum(values[q["ticker"]] * q["change_percent"] for q in quotes) / total
+    best = max(quotes, key=lambda q: q["change_percent"])
+    worst = min(quotes, key=lambda q: q["change_percent"])
+
+    def direction(percent):
+        return f"{'up' if percent >= 0 else 'down'} **{abs(percent):.2f}%**"
+
+    paragraphs = [
+        f"Here's your recap for the latest trading day: your portfolio was {direction(overall)} overall.",
+        f"**{best['ticker']}** was your best performer, {direction(best['change_percent'])}, while "
+        f"**{worst['ticker']}** had the roughest day, {direction(worst['change_percent'])}.",
+    ]
+    headlines = _NEWS.get(worst["ticker"])
+    if headlines:
+        paragraphs.append(f"The big story for {worst['ticker']}: \"{headlines[0]['headline']}.\"")
+    paragraphs.append(
+        "Remember, one day's move is usually just noise. It's more useful to look at how "
+        "your stocks do over months and years."
+    )
+
+    return {
+        "paragraphs": paragraphs,
+        "vocab": {
+            "term": "Percent change",
+            "definition": "How much a price went up or down compared to where it started. "
+                          "A $100 stock that rises to $102 is up 2%.",
+        },
+        "related_tickers": [best["ticker"], worst["ticker"]],
+    }

@@ -105,8 +105,57 @@ body {
   display: none;
 }
 
+/* ---------- Ask StockSense chat ---------- */
+
+/* Fill the screen below the mobile top bar (3.5rem) and page padding */
+.chat-page {
+  height: calc(100vh - 6.5rem);   /* fallback for older browsers */
+  height: calc(100dvh - 6.5rem);  /* dvh ignores the phone's address bar */
+  min-height: 30rem;
+}
+
+@media (min-width: 1024px) {
+  .chat-page {
+    height: calc(100vh - 5rem);
+    height: calc(100dvh - 5rem);
+  }
+}
+
+/* Keep the long placeholder on one line (ends in "..." on small screens) */
+#chat-input::placeholder {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* New messages fade and slide up into place */
+.msg-enter {
+  animation: message-in 0.25s ease-out both;
+}
+
+@keyframes message-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The three bouncing "typing" dots */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #9ca3af;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+
 /* Respect the "reduce motion" accessibility setting */
 @media (prefers-reduced-motion: reduce) {
-  .skeleton::after { animation: none; }
+  .skeleton::after, .msg-enter, .typing-dot { animation: none; }
   .jargon-tip, #price-chart { transition: none; }
 }
