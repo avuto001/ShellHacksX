@@ -40,3 +40,10 @@ def remove_stock(ticker):
     """Remove a stock from the portfolio. Does nothing if it isn't there."""
     ticker = ticker.strip().upper()
     st.session_state[_KEY] = [h for h in get_portfolio() if h["ticker"] != ticker]
+
+# Benchmarks config for goal tracking
+GOAL_BENCHMARKS = {
+    "Capital Preservation (1-3 yrs)": {"target_cagr": 0.04, "ticker": "BIL"},
+    "Balanced Wealth Growth (3-7 yrs)": {"target_cagr": 0.07, "ticker": "AOR"},
+    "Aggressive Long-Term (8+ yrs)": {"target_cagr": 0.10, "ticker": "VOO"},
+}

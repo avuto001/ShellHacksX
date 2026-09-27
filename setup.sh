@@ -1,3 +1,7 @@
+./setup.sh
+
+
+./run.sh
 #!/bin/bash
 # One-time setup for StockSense. Run it with: ./setup.sh
 # It's safe to run again at any time (for example, after someone adds a new package).

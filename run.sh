@@ -1,4 +1,4 @@
-#!/bin/bash
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser#!/bin/bash
 # Starts StockSense. Run it with: ./run.sh
 # Stop the app with Ctrl+C.
 
