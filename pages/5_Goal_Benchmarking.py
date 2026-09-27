@@ -1,46 +1,82 @@
 import streamlit as st
-import pandas as pd
+import pydeck as pdk
+from services.private_markets import get_private_equity_data
 from utils.ui import page_header
-from services.risk import calculate_goal_progress
 
-page_header("Goal-Based Benchmarking", "Track wealth against real-life milestones.")
+# Set up page header
+page_header("Goal Benchmarking", "Private Equity Firms across the Continental US")
 
-st.markdown("Set a target milestone (e.g., house down payment, retirement, or emergency fund) to see the required annual growth rate needed to reach your goal.")
+st.markdown("Explore private equity firms categorized by industry sector. Hover over a location to see key details and restaurant investments.")
 
-# --- Form Inputs ---
-with st.form("goal_benchmark_form"):
-    col1, col2 = st.columns(2)
-    with col1:
-        goal_name = st.text_input("Goal Name", value="House Down Payment")
-        current_val = st.number_input("Current Allocated Funds ($)", min_value=1.0, value=10000.0, step=500.0)
-    with col2:
-        target_val = st.number_input("Target Amount ($)", min_value=1.0, value=50000.0, step=1000.0)
-        target_year = st.slider("Target Year", min_value=2026, max_value=2045, value=2031)
-    
-    submitted = st.form_submit_button("Calculate Benchmark Path", use_container_width=True)
+# Load PE firm data
+df = get_private_equity_data()
 
-# --- Calculations & Visualization ---
-if current_val >= target_val:
-    st.success("🎉 You have already reached or exceeded your target goal amount!")
-else:
-    cagr, trajectory = calculate_goal_progress(current_val, target_val, target_year)
-    
-    # Display Key Metrics
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Current Value", f"${current_val:,.2f}")
-    m2.metric("Target Goal", f"${target_val:,.2f}")
-    m3.metric("Required Annual Growth (CAGR)", f"{cagr * 100:.2f}%")
-    
-    # Plot Trajectory Chart
-    df = pd.DataFrame(list(trajectory.items()), columns=["Year", "Target Path ($)"])
-    st.subheader(f"Required Growth Path for: {goal_name}")
-    st.line_chart(df.set_index("Year"))
-    
-    # Contextual Feedback
-    if cagr > 0.12:
-        st.warning("⚠️ **High Risk Profile Required:** Achieving over 12% annual return typically requires concentrated growth assets. Consider lowering your target or extending your timeline.")
-    elif cagr > 0.06:
-        st.info("📈 **Moderate Profile:** A balanced portfolio of equities and diversified ETFs can realistically target this return rate.")
-    else:
-        st.success("🛡️ **Conservative Profile:** This goal can likely be achieved using conservative income or broad index allocations.")
-        
+# Sector Filter Sidebar / Multi-select
+sectors = list(df["sector"].unique())
+selected_sectors = st.multiselect("Filter by Sector:", options=sectors, default=sectors)
+
+filtered_df = df[df["sector"].isin(selected_sectors)]
+
+# Define PyDeck Layer
+scatter_layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=filtered_df,
+    get_position=["lon", "lat"],
+    get_fill_color="color",
+    get_radius=80000,  # Radius in meters
+    pickable=True,
+    auto_highlight=True,
+)
+
+# Set initial map view centered over continental USA
+view_state = pdk.ViewState(
+    latitude=39.8283,
+    longitude=-98.5795,
+    zoom=3.5,
+    pitch=0
+)
+
+# Tooltip configuration for hover info
+tooltip = {
+    "html": """
+        <b>Firm Name:</b> {name}<br/>
+        <b>Sector:</b> {sector}<br/>
+        <b>Location:</b> {city}<br/>
+        <b>Assets Under Management (AUM):</b> {aum}<br/>
+        <b>Restaurant/Brand Investments:</b> {restaurants}
+    """,
+    "style": {
+        "backgroundColor": "darkblue",
+        "color": "white",
+        "fontSize": "13px",
+        "padding": "10px",
+        "borderRadius": "5px"
+    }
+}
+
+# Display Map
+st.pydeck_chart(
+    pdk.Deck(
+        layers=[scatter_layer],
+        initial_view_state=view_state,
+        map_style="mapbox://styles/mapbox/light-v10",
+        tooltip=tooltip
+    )
+)
+
+# Display Sector Legend
+st.markdown("### Sector Color Legend")
+legend_cols = st.columns(len(sectors))
+sector_colors = {
+    "Technology": "🟦 Blue",
+    "Consumer & Dining": "🟧 Orange",
+    "Healthcare": "🟩 Green",
+    "Energy & Industrials": "🟪 Purple"
+}
+
+for col, sector in zip(legend_cols, sectors):
+    col.metric(label=sector, value=sector_colors.get(sector, "⚪ Gray"))
+
+# Data Table below map
+with st.expander("View Data Table"):
+    st.dataframe(filtered_df[["name", "sector", "city", "aum", "restaurants"]], use_container_width=True)
