@@ -18,7 +18,7 @@ if "deal_size" not in df.columns:
 if "state" not in df.columns:
     df["state"] = df["city"].apply(lambda x: x.split(", ")[-1] if ", " in x else "")
 
-st.markdown("### 🔍 Private Equity Screener & Analytics")
+st.markdown("### Private Equity Screener & Analytics")
 
 # --- Dropdown Menu & Filters (Above the Table) ---
 col1, col2, col3 = st.columns([2, 1, 1])
@@ -53,7 +53,7 @@ if search_query.strip():
     ]
 
 # --- 1. Analytical Table (Above Map) ---
-st.markdown("#### 📊 Analytical Table")
+st.markdown("#### Analytical Table")
 
 if not filtered_df.empty:
     # Display formatted interactive table
