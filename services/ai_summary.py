@@ -535,15 +535,3 @@ def answer_question(question, portfolio_data, history=None):
         "articles": articles,
         "available": True,
     }
-
-
-# ---------------------------------------------------------------------------
-# Older placeholder. pages/1_Stock_Detail.py still imports summarize_news(), so
-# it stays until that page switches to summarize_stock().
-# ---------------------------------------------------------------------------
-
-
-def summarize_news(ticker, articles):
-    """Old placeholder. Use summarize_stock() instead."""
-    # TODO: remove once pages/1_Stock_Detail.py uses summarize_stock()
-    return ""

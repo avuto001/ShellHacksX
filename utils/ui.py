@@ -1,5 +1,8 @@
 """Shared display pieces so every page looks the same."""
 
+import re
+from html import escape
+
 import streamlit as st
 
 GREEN = "#16a34a"
@@ -14,6 +17,30 @@ def change_color(value):
     if value < 0:
         return RED
     return GRAY
+
+
+def html_text(text):
+    """Make text safe to put inside HTML, and stop Streamlit reading "$...$" as a math formula."""
+    return escape(str(text)).replace("$", "&#36;")
+
+
+def link_citations(html, articles):
+    """Turn each [n] in AI text (already passed through html_text) into a small link to article n.
+
+    `articles` is the numbered list the AI was given; each has an "id" and a "url".
+    """
+    urls = {article["id"]: article["url"] for article in articles}
+
+    def to_link(match):
+        url = urls.get(int(match.group(1)))
+        if not url:
+            return match.group(0)
+        return (
+            f'<a href="{html_text(url)}" target="_blank" style="font-size:.75rem; font-weight:600; '
+            f'text-decoration:none; vertical-align:super;">[{match.group(1)}]</a>'
+        )
+
+    return re.sub(r"\[(\d+)\]", to_link, html)
 
 
 def page_header(title, subtitle=None):
